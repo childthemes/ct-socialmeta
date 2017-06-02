@@ -7,6 +7,7 @@
  * @subpackage CT_Socialmeta/includes
  * @author     ChildThemes <hello@childthemes.net>
  */
+
 class CT_Socialmeta_Generator {
 
     /**
@@ -25,13 +26,18 @@ class CT_Socialmeta_Generator {
     protected $post_types;
 
     /**
+     * @var mixed
+     */
+    public $meta = array();
+
+    /**
      * Initialize the class and set its properties.
      *
      * @since    1.0.0
      */
     public function __construct() {
 
-        //add_action( 'wp_head', array( $this, 'get_socialmeta_tags' ), 1 );
+        add_action( 'wp_head', array( $this, 'socialmeta_tags' ), 1 );
 
     }
 
@@ -40,8 +46,8 @@ class CT_Socialmeta_Generator {
      *
      * @since    1.0.0
      */
-    public function get_socialmeta_tags() {
-        echo $this->get_socialmeta_tags_cache();
+    public function socialmeta_tags() {
+        echo $this->get_socialmeta_tags();
     }
 
     /**
@@ -50,17 +56,17 @@ class CT_Socialmeta_Generator {
      * @since    1.0.0
      * @return   string
      */
-    public function get_socialmeta_tags_cache() {
+    public function get_socialmeta_tags() {
 
         $trans_id  = $this->get_cache_key();
         $transient = get_transient( $trans_id );
-        $lifetime  = (int) carbon_get_theme_option('ctsm_cache_lifetime');
+        $lifetime  =  carbon_get_theme_option('ctsm_cache_lifetime');
 
         if ( $lifetime > 0 && $transient !== false ) {
             return $transient;
         }
 
-        $metadata = $this->socialmeta_generator();
+        $metadata = $this->get_socialmeta();
         if ($lifetime > 0) {
             $lifetime = $lifetime > 30 ? $lifetime : MINUTE_IN_SECONDS; // reasonable timeout
             set_transient( $trans_id, $metadata, $lifetime );
@@ -74,7 +80,7 @@ class CT_Socialmeta_Generator {
      * @since    1.0.0
      * @return   string
      */
-    protected function socialmeta_generator() {
+    public function get_socialmeta() {
 
         global $wp,$post;
 
@@ -83,52 +89,216 @@ class CT_Socialmeta_Generator {
         $def_title = $this->get('defaut_title') ? $this->get('defaut_title') : get_bloginfo('name');
         $def_desc  = $this->get('default_desc') ? $this->get('default_desc') : get_bloginfo('description');
         $imgId     = $this->get('default_image') ? $this->get('default_image') : false;
+        $sep_title = ($opt_sep_title = $this->get('social_title_sep')) ? ' ' . html_entity_decode($opt_sep_title) . ' ' : ' ';
+        $add_title = $this->get('social_title_append') == 'yes' ? $sep_title . get_bloginfo('name') : '';
 
         $meta = array(
             'og:url'    => trailingslashit(home_url(add_query_arg(array(),$wp->request))),
-            'og:title'  => $def_title,
+            'og:title'  => $def_title . $add_title,
             'og:description' => $def_desc,
             'og:locale' => get_locale(),
         );
 
-        // Facebook Specific Meta Tags
+        /**
+         * Facebook Meta
+         */
         $fb_type = $this->get('facebook_type');
-        if (!empty($fb_type)) {
-            $meta['og:type'] = $fb_type;
-        }
+
         if ($fb_app_id = $this->get('facebook_appid')) {
-            $meta['fb:app_id'] = absint($fb_app_id);
+            $meta['fb:app_id'] = $fb_app_id;
         }
         if ($fb_admin_id = $this->get('facebook_admin')) {
-            $meta['fb:admins'] = absint($fb_admin_id);
+            $meta['fb:admins'] = $fb_admin_id;
+        }
+        if ($fb_page_id = $this->get('facebook_page_id')) {
+            $meta['fb:pages'] = $fb_page_id;
         }
 
-        // Twitter Specific Meta Tags
+        /**
+         * Twitter Meta
+         */
         $tw_card = $this->get('twitter_style');
-        if (!empty($tw_card)) {
-            $meta['twitter:card'] = $tw_card;
-        }
+
         if ($tw_username = $this->get('twitter_username')) {
-            $meta['twitter:site'] = $tw_username;
+            $meta['twitter:site'] = '@'.$tw_username;
         }
-        if ($tw_card == 'app' && ($tw_apps = $this->get('twitter_apps','complex')) && is_array($tw_apps)) {
-            foreach ($tw_apps as $tw_app) {
-                if ($tw_app['_type'] == '_ctsm_twitter_app_googleplay' && !empty($tw_app['ctsm_twitter_app_googleplay_id'])) {
-                    $meta['twitter:app:name:googleplay'] = $tw_app['ctsm_twitter_app_googleplay_name'];
-                    $meta['twitter:app:id:googleplay'] = $tw_app['ctsm_twitter_app_googleplay_id'];
-                    $meta['twitter:app:url:googleplay'] = $tw_app['ctsm_twitter_app_googleplay_url'];
+
+        /**
+         * Generate Specific Page
+         */
+        if ( is_author() ) {
+            $fb_type = 'profile';
+            $tw_card = 'summary';
+            $author_id = get_the_author_meta('ID');
+            $user_fb_id = carbon_get_user_meta($author_id, 'ctsm_facebook');
+            $user_tw_id = carbon_get_user_meta($author_id, 'ctsm_twitter');
+            $author = get_user_by( 'id', $author_id );
+            $avatar = get_avatar_url( get_the_author_meta('ID'), array( 'size' => 500 ) );
+            if (!empty($user_fb_id)) {
+                $meta['fb:profile_id'] = $user_fb_id;
+            }
+            elseif (!empty($fb_admin_id)) {
+                $meta['fb:profile_id'] = $fb_admin_id;
+            }
+            $author_name = ctsm_get_user_name( $author_id );
+            $meta['og:title'] = $author_name . $add_title;
+            $meta['og:description'] = sprintf( __('All post created by %s', 'ct-socialmeta'), $author_name );
+            if (!empty($avatar)) {
+                $imgId = false;
+                $meta['og:image'] = $avatar;
+                $meta['og:image:width'] = 500;
+                $meta['og:image:height'] = 500;
+                $meta['twitter:image'] = $avatar;
+                $meta['twitter:image:alt'] = sprintf( __('Profile picture of %s', 'ct-socialmeta'), $author_name );
+            }
+            if (!empty($user_tw_id)) {
+                $meta['twitter:creator'] = '@'.$user_tw_id;
+            }
+        }
+        elseif ( is_archive() && is_date() ) {
+            $fb_type = 'article';
+            $tw_card = 'summary';
+            $meta['og:title'] = esc_attr__( 'Archive by Date', 'ct-socialmeta' ) . $add_title;
+            $date_desc = esc_attr__( 'List of article posted at', 'ct-socialmeta' );
+            $date_string = '';
+            if ( $date_day = get_query_var('day') ) {
+                $date_string .= ' '.$date_day;
+            }
+            if ( $date_month = get_query_var('monthnum') ) {
+                $date_string .= ' '.date('F', mktime(0, 0, 0, $date_month, 10));
+            }
+            if ( $date_year = get_query_var('year') ) {
+                $date_string .= ' '.$date_year;
+            }
+            $meta['og:description'] = $date_desc . $date_string;
+            $meta['og:updated_time'] = date('c', strtotime( $date_string ));
+            $meta['article:modified_time'] = $meta['og:updated_time'];
+            $meta['article:section'] = __('Archive', 'ct-socialmeta');
+        }
+
+        /**
+         * Get custom value by object type.
+         */
+        if ( $_object && ! is_author() && ! is_front_page() && ! is_home() ) {
+            if ( $_object instanceof WP_Post ) {
+                $fb_type = 'article';
+                $tw_card = 'summary';
+
+                $meta['og:url'] = get_permalink( $_object->ID );
+                $meta['og:title'] = $_object->post_title . $add_title;
+                $meta['og:updated_time'] = date('c', strtotime( $_object->post_modified ));
+                $meta['og:description'] = wp_strip_all_tags( get_the_excerpt(), true );
+                if (empty($meta['og:description'])) {
+                    $content = apply_filters( 'the_content', $_object->post_content );
+                    $meta['og:description'] = wp_trim_words( wp_strip_all_tags($content, true), 30, '.' );
                 }
-                elseif ($tw_app['_type'] == '_ctsm_twitter_app_iphone' && !empty($tw_app['ctsm_twitter_app_iphone_id'])) {
-                    $meta['twitter:app:name:iphone'] = $tw_app['ctsm_twitter_app_iphone_name'];
-                    $meta['twitter:app:id:iphone'] = $tw_app['ctsm_twitter_app_iphone_id'];
-                    $meta['twitter:app:url:iphone'] = $tw_app['ctsm_twitter_app_iphone_url'];
+
+                $user_fb_id = carbon_get_user_meta($_object->post_author, 'ctsm_facebook');
+                $user_tw_id = carbon_get_user_meta($_object->post_author, 'ctsm_twitter');
+                if (!empty($user_fb_id)) {
+                    $meta['fb:profile_id'] = $user_fb_id;
+                }
+                if (!empty($user_tw_id)) {
+                    $meta['twitter:creator'] = '@'.esc_attr($user_tw_id);
+                }
+
+                if ( has_post_thumbnail( $_object->ID ) ) {
+                    $tw_card = 'summary_large_image';
+                    $imgId =  get_post_meta( $_object->ID, '_thumbnail_id', true );
+                }
+                elseif ( $first_obj_img = ctsm_get_first_image( $_object->ID ) ) {
+                    $tw_card = 'summary_large_image';
+                    if ($try_get_image_id = ctsm_get_attachment_id_from_src($first_obj_img)) {
+                        $imgId = $try_get_image_id;
+                    } else {
+                        $imgId = false;
+                        $uploads = wp_upload_dir();
+                        $image_path = str_replace( $uploads['baseurl'], $uploads['basedir'], $first_obj_img );
+                        $img_size = getimagesize($image_path);
+                        if ($img_size && is_array($img_size)) {
+                            $meta['og:image:width'] = $img_size[0];
+                            $meta['og:image:height'] = $img_size[1];
+                        }
+                        $meta['og:image'] = esc_url($first_obj_img);
+                        $meta['og:image:alt'] = $_object->post_title;
+                        $meta['twitter:image'] = esc_url($first_obj_img);
+                        $meta['twitter:image:alt'] = $_object->post_title;
+                    }
+                }
+
+                // Custom override is enabled
+                if ( $this->is_post_type_active( $_object->post_type ) ) {
+                    if ( $meta_title = $this->meta('defaut_title') ) {
+                        $meta['og:title'] = $meta_title;
+                    }
+                    if ( $meta_desc = $this->meta('default_desc') ) {
+                        $meta['og:description'] = $meta_desc;
+                    }
+                    if ( $meta_image = $this->meta('default_image') ) {
+                        $imgId = absint($meta_image);
+                    }
+                    // Override Facebook
+                    if ( $this->meta('facebook_is_default') !== 'yes' ) {
+                        $meta_fb_type = $this->meta('facebook_type');
+                        if ( !empty( $meta_fb_type ) ) {
+                            $fb_type = $meta_fb_type;
+                        }
+                        if ( $meta_fb_type == 'profile' && ( $meta_fb_profile = $this->meta('facebook_profile') ) ) {
+                            $meta['fb:profile_id'] = $meta_fb_profile;
+                        }
+                        elseif ( $meta_fb_type == 'article' ) {
+                            if ( $meta_fb_article_author = $this->meta('facebook_article_author') ) {
+                                $meta['article:author'] = $meta_fb_article_author;
+                            }
+                            if ( $meta_fb_article_section = $this->meta('facebook_article_section') ) {
+                                $meta['article:section'] = $meta_fb_article_section;
+                            }
+                        }
+                        elseif ( $meta_fb_type == 'business.business' ) {
+                            $meta_fb_address = array( 'street_address', 'locality', 'region', 'postal_code', 'country_name', 'phone_number', 'website' );
+                            foreach ($meta_fb_address as $meta_fb_addr) {
+                                $meta_fb_addr_data = $this->meta('facebook_business_'.$meta_fb_addr);
+                                $meta_fb_addr_meta = 'business:contact_data:'.$meta_fb_addr;
+                                if ( !empty($meta_fb_addr_data) ) {
+                                    $meta[ $meta_fb_addr_meta ] = $meta_fb_addr_data;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                //Specific facebook
+                if ($fb_type == 'article') {
+                    if (!isset($meta['article:author'])) {
+                        $meta['article:author'] = $this->get('facebook_article_author') ?
+                             $this->get('facebook_article_author')
+                            : ctsm_get_user_name( $_object->post_author );
+                    }
+                    if ($article_publisher = $this->get('facebook_page_id') && !isset($meta['article:publisher'])) {
+                        $meta['article:publisher'] = $article_publisher;
+                    }
+
+                    $meta['article:modified_time'] = date('c', strtotime( $_object->post_modified ));
+                    $meta['article:published_time'] = date('c', strtotime( $_object->post_date ));
+
+                    if (!isset($meta['article:section'])) {
+                        $categories = get_the_category( $_object->ID );
+                        if ( ! empty( $categories ) && ! is_wp_error( $categories ) ) {
+                            $meta['article:section'] = $categories[0]->name;
+                        } elseif ($article_section = $this->get('facebook_article_section')) {
+                            $meta['article:section'] = $article_section;
+                        }
+                    }
+                    if ( ! empty( $user_fb_id ) && !isset($meta['article:author']) ) {
+                        $meta['article:author'] = $user_fb_id;
+                    }
                 }
             }
         }
-        elseif ($tw_card == 'summary_large_image' && ($tw_creator = $this->get('twitter_creator'))) {
-            $meta['twitter:creator'] = $tw_creator;
-        }
 
+        /**
+         * Generate Image
+         */
         if ($imgId) {
             $_image = ctsm_get_image_meta($imgId);
             if (!empty($_image['src'])) {
@@ -136,14 +306,92 @@ class CT_Socialmeta_Generator {
                 $meta['og:image:width'] = $_image['width'];
                 $meta['og:image:height'] = $_image['height'];
                 $meta['og:image:type'] = $_image['mime_type'];
+                $meta['og:image:alt'] = $_image['alt'];
                 $meta['twitter:image'] = $_image['src'];
                 $meta['twitter:image:alt'] = $_image['alt'];
             }
         }
 
-        ksort($meta);
-        foreach ($meta as $name => $content) {
-            $metadata .= '<meta name="'. esc_attr($name) .'" content="'. esc_html($content) .'" />';
+        /**
+         * Facebook Specific Meta Tags
+         */
+        if (!empty($fb_type)) {
+            $meta['og:type'] = $fb_type;
+        }
+        if ( in_array( $fb_type, array( 'place', 'business.business' ) ) ) {
+            if (($fb_place_lat = $this->get('facebook_place_lat')) && !isset($meta['place:location:latitude'])) {
+                $meta['place:location:latitude'] = floatval($fb_place_lat);
+            }
+            if (($fb_place_lng = $this->get('facebook_place_long')) && !isset($meta['place:location:longitude'])) {
+                $meta['place:location:longitude'] = floatval($fb_place_lng);
+            }
+        }
+        if ($fb_type == 'profile' && ($fb_profile_id = $this->get('facebook_profile')) && !isset($meta['fb:profile_id'])) {
+            $meta['fb:profile_id'] = $fb_profile_id;
+        }
+        if ( $fb_type == 'business.business' ) {
+            $fb_address = array( 'street_address', 'locality', 'region', 'postal_code', 'country_name', 'phone_number', 'website' );
+            foreach ($fb_address as $fb_addr) {
+                $fb_addr_data = $this->get('facebook_business_'.$fb_addr);
+                $fb_addr_meta = 'business:contact_data:'.$fb_addr;
+                if ( !empty($fb_addr_data) && !isset( $meta[ $fb_addr_meta ] ) ) {
+                    $meta[ $fb_addr_meta ] = $fb_addr_data;
+                }
+            }
+        }
+
+        /**
+         * Twitter Specific Meta Tags
+         */
+        if (!empty($tw_card)) {
+            $meta['twitter:card'] = $tw_card;
+        }
+        if ($tw_card == 'app' && ($tw_apps = $this->get('twitter_apps','complex')) && is_array($tw_apps)) {
+            foreach ($tw_apps as $tw_app) {
+                if (
+                    $tw_app['_type'] == '_ctsm_twitter_app_googleplay' &&
+                    !empty($tw_app['ctsm_twitter_app_googleplay_id']) &&
+                    !isset($meta['twitter:app:id:googleplay'])
+                ) {
+                    $meta['twitter:app:name:googleplay'] = $tw_app['ctsm_twitter_app_googleplay_name'];
+                    $meta['twitter:app:id:googleplay'] = $tw_app['ctsm_twitter_app_googleplay_id'];
+                    $meta['twitter:app:url:googleplay'] = $tw_app['ctsm_twitter_app_googleplay_url'];
+                }
+                elseif (
+                    $tw_app['_type'] == '_ctsm_twitter_app_iphone' &&
+                    !empty($tw_app['ctsm_twitter_app_iphone_id']) &&
+                    !isset($meta['twitter:app:id:iphone'])
+                ) {
+                    $meta['twitter:app:name:iphone'] = $tw_app['ctsm_twitter_app_iphone_name'];
+                    $meta['twitter:app:id:iphone'] = $tw_app['ctsm_twitter_app_iphone_id'];
+                    $meta['twitter:app:url:iphone'] = $tw_app['ctsm_twitter_app_iphone_url'];
+                }
+            }
+        }
+        elseif (!isset($meta['twitter:creator']) && $tw_card == 'summary_large_image' && ($tw_creator = $this->get('twitter_creator'))) {
+            $meta['twitter:creator'] = '@'.$tw_creator;
+        }
+
+        if ( ! empty( $meta['og:title'] ) ) {
+            $meta['twitter:title'] = $meta['og:title'];
+        }
+
+        if ( ! empty( $meta['og:description'] ) ) {
+            $meta['twitter:description'] = $meta['og:description'];
+        }
+
+        /**
+         * Hook for theme or plugin
+         */
+        $this->meta = apply_filters( 'ct_socialmeta_tags', $meta );
+
+        /**
+         * Finalize
+         */
+        ksort($this->meta);
+        foreach ($this->meta as $name => $content) {
+            $nametag = ( strpos($name, 'twitter') !== false ) ? 'name' : 'property';
+            $metadata .= '<meta '. $nametag .'="'. esc_attr($name) .'" content="'. esc_attr($content) .'" />';
         }
         return $metadata;
     }
@@ -155,7 +403,7 @@ class CT_Socialmeta_Generator {
      * @return   string
      */
     public function get_object() {
-        if (!$this->object) {
+        if ($this->object === null) {
             $_object = get_queried_object();
             if ( ! empty( $_object ) ) {
                 $this->object = $_object;
@@ -182,6 +430,21 @@ class CT_Socialmeta_Generator {
         }
         elseif ( ( $_object instanceof WP_Term ) && $this->is_taxonomy_active( $_object->taxonomy ) ) {
             $key .= '_'. $_object->taxonomy .'_'. $_object->term_id;
+        }
+        elseif ( ( $_object instanceof WP_User ) && !empty( $_object->ID ) ) {
+            $key .= '_user_' . $_object->ID;
+        }
+        elseif ( is_archive() ) {
+            $key .= '_archive_';
+            if ( is_year() && get_query_var('year') ) {
+                $key .= get_query_var('year');
+            }
+            if ( is_month() && get_query_var('monthnum') ) {
+                $key .= get_query_var('monthnum');
+            }
+            if ( is_day() && get_query_var('day') ) {
+                $key .= get_query_var('day');
+            }
         }
         return $key;
     }
@@ -223,6 +486,22 @@ class CT_Socialmeta_Generator {
     public function get( $field, $type = null ) {
         $field = (strpos($field, 'ctsm_') !== false) ? $field : 'ctsm_'.$field;
         return carbon_get_theme_option( $field, $type );
+    }
+
+    /**
+     * Just shorthand to get post meta value
+     *
+     * @since    1.0.0
+     * @param    $field   field name
+     * @param    $type    field type
+     * @return   mixed | string | int
+     */
+    public function meta( $field, $type = null ) {
+        if (!$this->object) {
+            return;
+        }
+        $field = (strpos($field, 'ctsm_') !== false) ? $field : 'ctsm_'.$field;
+        return carbon_get_post_meta( $this->object->ID, $field, $type );
     }
 
 }

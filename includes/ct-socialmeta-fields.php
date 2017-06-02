@@ -18,7 +18,7 @@ class CT_Socialmeta_Fields {
     /**
      * @var $path
      */
-    protected $path = CT_SOCIALMETA_PATH . 'includes/options/';
+    protected $path;
 
     /**
      * Initialize the class and set its properties.
@@ -26,6 +26,8 @@ class CT_Socialmeta_Fields {
      * @since    1.0.0
      */
     public function __construct() {
+
+        $this->path = CT_SOCIALMETA_PATH . 'includes/options/';
 
         add_action( 'carbon_register_fields', array( $this, 'includes' ) );
 
@@ -47,6 +49,11 @@ class CT_Socialmeta_Fields {
          * Include individual post meta settings
          */
         include_once( $this->path . 'post-fields.php' );
+
+        /**
+         * Include user profile social media
+         */
+        include_once( $this->path . 'user-fields.php' );
 
     }
 

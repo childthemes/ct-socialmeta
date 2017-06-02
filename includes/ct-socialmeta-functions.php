@@ -40,10 +40,11 @@ function ctsm_facebook_site_types() {
         'website' => 'Website',
         'article' => 'Article',
         'profile' => 'Profile',
+        'place' => 'Place',
         'business.business' => 'Business Page',
         'product' => 'Product Page',
-        'product.group' => 'Product Group',
-        'product.item' => 'Product Item'
+        //'product.group' => 'Product Group',
+        //'product.item' => 'Product Item'
     ) );
 }
 endif;
@@ -132,6 +133,38 @@ function ctsm_taxonomy_options() {
 endif;
 
 /**
+ * Get first image ID from post object ID.
+ *
+ * @since   1.0.0
+ * @param   $post_id  int
+ * @return  int
+ */
+if ( ! function_exists( 'ctsm_get_first_image' ) ) :
+function ctsm_get_first_image($post_id) {
+    $images = get_posts(
+        array(
+            'post_type'      => 'attachment',
+            'post_parent'    => $post_id,
+            'posts_per_page' => 1, /* Save memory, only need one */
+        )
+    );
+    $image = !empty($images) ? $images[0] : false;
+    if ($image) {
+        return wp_get_attachment_image_src($image, 'full', true)[0];
+    }
+    $post = get_post($post_id);
+    if (!empty($post->post_content)) {
+        $content = apply_filters( 'the_content', $post->post_content );
+        preg_match_all('/<img.+src=[\'"]([^\'"]+)[\'"].*>/i', $content, $matches);
+        if (!empty($matches[1][0])) {
+            $image = $matches[1][0];
+        }
+    }
+    return $image;
+}
+endif;
+
+/**
  * Get meta data from image URL
  *
  * @since   1.0.0
@@ -188,9 +221,48 @@ function ctsm_get_image_meta($attachment_id) {
 endif;
 
 /**
+ * Hook after post meta saved.
+ *
+ * @param $post_id  int
+ */
+if ( ! function_exists('ctsm_after_save_meta') ) :
+function ctsm_after_save_meta($post_id) {
+    $cache_key = 'ct_socialmeta_head_' . get_post_type($post_id) . '_' . $post_id;
+    delete_transient( $cache_key );
+}
+add_action( 'carbon_after_save_post_meta', 'ctsm_after_save_meta' );
+endif;
+
+/**
+ * Get user friendly name
+ *
+ * @param $user_id  int
+ */
+if ( ! function_exists('ctsm_get_user_name') ) :
+function ctsm_get_user_name($user_id) {
+    $myname = '';
+    if ($display_name = get_user_meta($user_id, 'display_name', true)) {
+        $myname = $display_name;
+    }
+    if ($nick_name = get_user_meta($user_id, 'nickname', true)) {
+        $myname = $nick_name;
+    }
+    elseif ($first_name = get_user_meta($user_id, 'first_name', true)) {
+        $myname = $first_name;
+        if ($last_name = get_user_meta($user_id, 'last_name', true)) {
+            $myname .= ' ' . $last_name;
+        }
+    } else {
+        $myname = get_user_meta($user_id, 'username', true);
+    }
+    return $myname;
+}
+endif;
+
+/**
  * Plugin Debugger
  */
-function ctsm_debugger() {
+function ctsm_admin_debugger() {
 
     global $ct_socialmeta;
 
@@ -200,4 +272,22 @@ function ctsm_debugger() {
     print_r($data);
     echo "</code></pre>";
 }
-add_action( 'admin_notices', 'ctsm_debugger' );
+//add_action( 'admin_notices', 'ctsm_admin_debugger' );
+
+/**
+ * Plugin Debugger
+ */
+function ctsm_front_debugger() {
+
+    global $ct_socialmeta;
+
+    $data = $ct_socialmeta->generator->meta;
+    $object = ctsm_get_user_name(1);
+
+    echo "<br /><br /><pre style='width:100%;overflow:auto'><code>";
+    var_dump( carbon_get_theme_option('ctsm_facebook_page_id') );
+    echo "\n";
+    var_dump( $data );
+    echo "</code></pre>";
+}
+add_action( 'wp_head', 'ctsm_front_debugger', 9999 );
