@@ -176,6 +176,9 @@ class CT_Socialmeta_Generator {
             $meta['article:section'] = __('Archive', 'ct-socialmeta');
         }
 
+        $use_address = true;
+        $use_article = true;
+
         /**
          * Get custom value by object type.
          */
@@ -247,6 +250,7 @@ class CT_Socialmeta_Generator {
                             $meta['fb:profile_id'] = $meta_fb_profile;
                         }
                         elseif ( $meta_fb_type == 'article' ) {
+                            $use_article = false;
                             if ( $meta_fb_article_author = $this->meta('facebook_article_author') ) {
                                 $meta['article:author'] = $meta_fb_article_author;
                             }
@@ -255,6 +259,7 @@ class CT_Socialmeta_Generator {
                             }
                         }
                         elseif ( $meta_fb_type == 'business.business' ) {
+                            $use_address = false;
                             $meta_fb_address = array( 'street_address', 'locality', 'region', 'postal_code', 'country_name', 'phone_number', 'website' );
                             foreach ($meta_fb_address as $meta_fb_addr) {
                                 $meta_fb_addr_data = $this->meta('facebook_business_'.$meta_fb_addr);
@@ -264,11 +269,21 @@ class CT_Socialmeta_Generator {
                                 }
                             }
                         }
+                        elseif ( $meta_fb_type == 'product' ) {
+                            $meta_fb_products = array( 'upc', 'availability', 'brand', 'category', 'price_amount', 'price_currency' );
+                            foreach ($meta_fb_products as $meta_fb_prod) {
+                                $meta_fb_prod_data = $this->meta('facebook_product_'.$meta_fb_prod);
+                                $meta_fb_prod_meta = 'product:'.str_replace('_',':',$meta_fb_prod);
+                                if ( !empty($meta_fb_prod_data) ) {
+                                    $meta[ $meta_fb_prod_meta ] = $meta_fb_prod_data;
+                                }
+                            }
+                        }
                     }
                 }
 
                 //Specific facebook
-                if ($fb_type == 'article') {
+                if ($fb_type == 'article' && $use_article) {
                     if (!isset($meta['article:author'])) {
                         $meta['article:author'] = $this->get('facebook_article_author') ?
                              $this->get('facebook_article_author')
@@ -329,7 +344,7 @@ class CT_Socialmeta_Generator {
         if ($fb_type == 'profile' && ($fb_profile_id = $this->get('facebook_profile')) && !isset($meta['fb:profile_id'])) {
             $meta['fb:profile_id'] = $fb_profile_id;
         }
-        if ( $fb_type == 'business.business' ) {
+        if ( $fb_type == 'business.business' && $use_address ) {
             $fb_address = array( 'street_address', 'locality', 'region', 'postal_code', 'country_name', 'phone_number', 'website' );
             foreach ($fb_address as $fb_addr) {
                 $fb_addr_data = $this->get('facebook_business_'.$fb_addr);
@@ -346,28 +361,6 @@ class CT_Socialmeta_Generator {
         if (!empty($tw_card)) {
             $meta['twitter:card'] = $tw_card;
         }
-        if ($tw_card == 'app' && ($tw_apps = $this->get('twitter_apps','complex')) && is_array($tw_apps)) {
-            foreach ($tw_apps as $tw_app) {
-                if (
-                    $tw_app['_type'] == '_ctsm_twitter_app_googleplay' &&
-                    !empty($tw_app['ctsm_twitter_app_googleplay_id']) &&
-                    !isset($meta['twitter:app:id:googleplay'])
-                ) {
-                    $meta['twitter:app:name:googleplay'] = $tw_app['ctsm_twitter_app_googleplay_name'];
-                    $meta['twitter:app:id:googleplay'] = $tw_app['ctsm_twitter_app_googleplay_id'];
-                    $meta['twitter:app:url:googleplay'] = $tw_app['ctsm_twitter_app_googleplay_url'];
-                }
-                elseif (
-                    $tw_app['_type'] == '_ctsm_twitter_app_iphone' &&
-                    !empty($tw_app['ctsm_twitter_app_iphone_id']) &&
-                    !isset($meta['twitter:app:id:iphone'])
-                ) {
-                    $meta['twitter:app:name:iphone'] = $tw_app['ctsm_twitter_app_iphone_name'];
-                    $meta['twitter:app:id:iphone'] = $tw_app['ctsm_twitter_app_iphone_id'];
-                    $meta['twitter:app:url:iphone'] = $tw_app['ctsm_twitter_app_iphone_url'];
-                }
-            }
-        }
         elseif (!isset($meta['twitter:creator']) && $tw_card == 'summary_large_image' && ($tw_creator = $this->get('twitter_creator'))) {
             $meta['twitter:creator'] = '@'.$tw_creator;
         }
@@ -378,6 +371,31 @@ class CT_Socialmeta_Generator {
 
         if ( ! empty( $meta['og:description'] ) ) {
             $meta['twitter:description'] = $meta['og:description'];
+        }
+
+        /**
+         * Applications Properties
+         */
+        $apps = array( 'iphone', 'ipad', 'android', 'ios', 'win' );
+        foreach ($apps as  $app) {
+            $app_name = $this->get( 'app_name_' . $app );
+            $app_id   = $this->get( 'app_id_' . $app );
+            $app_url  = $this->get( 'app_url_' . $app );
+            if ( empty( $app_name ) || empty( $app_id ) || empty( $app_url ) ) {
+                continue;
+            }
+            if ( $app == 'win' && ( $app_win_type = $this->get('app_uses_win') ) ) {
+                $app_type = ( $app_win_type == 'desktop' ) ? 'windows' : ( $app_win_type == 'desktop_mobile' ? 'windows_phone' : 'windows_universal' );
+            } else {
+                $app_type = $app;
+            }
+            $app_meta_url  = 'al:'.$app_type.':url';
+            $app_meta_name = 'al:'.$app_type.':app_name';
+            $app_meta_id   = 'al:'.$app_type.':';
+            $app_meta_id  .= ($app == 'android') ? 'package' : ( $app == 'win' ? 'app_id' : 'app_store_id' );
+            $meta[ $app_meta_url ] = esc_url( $app_url );
+            $meta[ $app_meta_id ] = esc_attr( $app_id );
+            $meta[ $app_meta_name ] = esc_attr( $app_name );
         }
 
         /**

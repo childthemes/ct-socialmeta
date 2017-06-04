@@ -117,38 +117,50 @@ Container::make('theme_options', __('Child Social Meta', 'ct-socialmeta'))
                 'field'   => 'ctsm_twitter_style',
                 'value'   => 'summary_large_image'
             )
-        )),
-    Field::make('complex', 'ctsm_twitter_apps', __('Mobile App Details', 'ct-socialmeta'))
-        ->add_fields('ctsm_twitter_app_iphone', __('iPhone App', 'ct-socialmeta'), array(
-            Field::make('text', 'ctsm_twitter_app_iphone_name', __('Name of your iPhone App', 'ct-socialmeta'))->set_width('33.333333'),
-            Field::make('text', 'ctsm_twitter_app_iphone_id', __('App ID (.i.e. "307234931")', 'ct-socialmeta'))->set_width('33.333333'),
-            Field::make('text', 'ctsm_twitter_app_iphone_url', __('App’s custom URL scheme', 'ct-socialmeta'))->set_width('33.333333'),
         ))
-        ->set_header_template('iPhone App<# if (ctsm_twitter_app_iphone_name) { #> : {{ ctsm_twitter_app_iphone_name }}<# } #>')
-        ->add_fields('ctsm_twitter_app_googleplay', __('Android App', 'ct-socialmeta'), array(
-            Field::make('text', 'ctsm_twitter_app_googleplay_name', __('Name of your Android App', 'ct-socialmeta'))->set_width('33.333333'),
-            Field::make('text', 'ctsm_twitter_app_googleplay_id', __('App ID (.i.e. "com.android.app")', 'ct-socialmeta'))->set_width('33.333333'),
-            Field::make('text', 'ctsm_twitter_app_googleplay_url', __('App’s custom URL scheme', 'ct-socialmeta'))->set_width('33.333333'),
-        ))
-        ->set_header_template('Android App<# if (ctsm_twitter_app_googleplay_name) { #> : {{ ctsm_twitter_app_googleplay_name }}<# } #>')
-        ->set_layout('tabbed-horizontal')
-        ->set_max(4)
-        ->setup_labels(array(
-            'plural_name' => __('Apps', 'ct-socialmeta'),
-            'singular_name' => __('App', 'ct-socialmeta')
-        ))
-        ->set_conditional_logic(array(
-            array(
-                'field'   => 'ctsm_twitter_style',
-                'value'   => 'app'
-            )
-        )),
 ))
 /**
  * GOOGLE+ SETTINGS
  */
-->add_tab( __('Google+ Settings', 'ct-socialmeta'), array(
+->add_tab( __('Google Settings', 'ct-socialmeta'), array(
     Field::make('text', 'ctsm_gplus_link', __('Google+ Page URL', 'ct-socialmeta')),
+))
+/**
+ * MOBILE APPS
+ */
+->add_tab( __('Application Properties', 'ct-socialmeta'), array(
+    Field::make('separator', 'ctsm_apps_desc', '<small style="font-size:13px;font-weight:400;">'. __('Applcation details is required for Twitter Card Apps and useful for Facebook mobile sharing and stories (Required facebook App ID and Page ID).', 'ct-socialmeta').'</small>'),
+
+    Field::make('separator', 'ctsm_app_iphone_sep', __('iPhone App', 'ct-socialmeta')),
+    Field::make('text', 'ctsm_app_name_iphone', __('App Name', 'ct-socialmeta'))->set_width('33.333333'),
+    Field::make('text', 'ctsm_app_id_iphone', __('App Store ID (.i.e. "307234931")', 'ct-socialmeta'))->set_width('33.333333'),
+    Field::make('text', 'ctsm_app_url_iphone', __('App’s URL', 'ct-socialmeta'))->set_width('33.333333'),
+
+    Field::make('separator', 'ctsm_app_ipad_sep', __('iPad App', 'ct-socialmeta')),
+    Field::make('text', 'ctsm_app_name_ipad', __('App Name', 'ct-socialmeta'))->set_width('33.333333'),
+    Field::make('text', 'ctsm_app_id_ipad', __('App Store ID (.i.e. "307234931")', 'ct-socialmeta'))->set_width('33.333333'),
+    Field::make('text', 'ctsm_app_url_ipad', __('App’s URL', 'ct-socialmeta'))->set_width('33.333333'),
+
+    Field::make('separator', 'ctsm_app_android_sep', __('Android App', 'ct-socialmeta')),
+    Field::make('text', 'ctsm_app_name_android', __('App Name', 'ct-socialmeta'))->set_width('33.333333'),
+    Field::make('text', 'ctsm_app_id_android', __('Google Play ID (.i.e. "com.android.app")', 'ct-socialmeta'))->set_width('33.333333'),
+    Field::make('text', 'ctsm_app_url_android', __('App’s URL', 'ct-socialmeta'))->set_width('33.333333'),
+
+    Field::make('separator', 'ctsm_app_ios_sep', __('iOS App', 'ct-socialmeta')),
+    Field::make('text', 'ctsm_app_name_ios', __('App Name', 'ct-socialmeta'))->set_width('33.333333'),
+    Field::make('text', 'ctsm_app_id_ios', __('App Store ID (.i.e. "307234931")', 'ct-socialmeta'))->set_width('33.333333'),
+    Field::make('text', 'ctsm_app_url_ios', __('App’s URL', 'ct-socialmeta'))->set_width('33.333333'),
+
+    Field::make('separator', 'ctsm_app_win_sep', __('Windows App', 'ct-socialmeta')),
+    Field::make('text', 'ctsm_app_name_win', __('App Name', 'ct-socialmeta'))->set_width(25),
+    Field::make('text', 'ctsm_app_id_win', __('Package Family Name', 'ct-socialmeta'))->set_width(25),
+    Field::make('text', 'ctsm_app_url_win', __('App’s URL', 'ct-socialmeta'))->set_width(25),
+    Field::make('select', 'ctsm_app_uses_win', __('Windows Platform', 'ct-socialmeta'))->set_width(25)
+    ->set_options(array(
+        'desktop' => __('Desktop Only', 'ct-socialmeta'),
+        'desktop_mobile' => __('Desktop and Mobile', 'ct-socialmeta'),
+        'universal' => __('Universal', 'ct-socialmeta'),
+    ))
 ))
 
 ;

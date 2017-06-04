@@ -113,5 +113,42 @@ Container::make('post_meta', __('Custom Social Meta', 'ct-socialmeta'))
             array( 'field' => 'ctsm_facebook_type', 'compare' => 'IN', 'value' => array( 'place', 'business.business' ) )
         )),
 
+    Field::make('text', 'ctsm_facebook_product_upc', __('Product SKU/ID', 'ct-socialmeta'))->set_width(50)
+    ->set_conditional_logic(array(
+        array( 'field' => 'ctsm_facebook_is_default' ),
+        array( 'field' => 'ctsm_facebook_type', 'value' => 'product' )
+    )),
+    Field::make('select', 'ctsm_facebook_product_availability', __('Availability', 'ct-socialmeta'))->set_width(50)
+    ->set_options(array(
+        'instock'  => __('In Stock', 'ct-socialmeta'),
+        'oos'      => __('Out Of Stock', 'ct-socialmeta'),
+        'pending'  => __('Not Available', 'ct-socialmeta')
+    ))
+    ->set_conditional_logic(array(
+        array( 'field' => 'ctsm_facebook_is_default' ),
+        array( 'field' => 'ctsm_facebook_type', 'value' => 'product' )
+    )),
+    Field::make('text', 'ctsm_facebook_product_brand', __('Brand Name', 'ct-socialmeta'))->set_width(50)
+    ->set_conditional_logic(array(
+        array( 'field' => 'ctsm_facebook_is_default' ),
+        array( 'field' => 'ctsm_facebook_type', 'value' => 'product' )
+    )),
+    Field::make('text', 'ctsm_facebook_product_category', __('Category', 'ct-socialmeta'))->set_width(50)
+    ->set_conditional_logic(array(
+        array( 'field' => 'ctsm_facebook_is_default' ),
+        array( 'field' => 'ctsm_facebook_type', 'value' => 'product' )
+    )),
+    Field::make('text', 'ctsm_facebook_product_price_amount', __('Price', 'ct-socialmeta'))->set_width(50)
+    ->help_text(__('Please input number only, without currency.', 'ct-socialmeta'))
+    ->set_conditional_logic(array(
+        array( 'field' => 'ctsm_facebook_is_default' ),
+        array( 'field' => 'ctsm_facebook_type', 'value' => 'product' )
+    )),
+    Field::make('text', 'ctsm_facebook_product_price_currency', __('Price Currency Code', 'ct-socialmeta'))->set_width(50)
+    ->help_text(__('3 letters ISO-4217 currency format, e.g. USD', 'ct-socialmeta'))
+    ->set_conditional_logic(array(
+        array( 'field' => 'ctsm_facebook_is_default' ),
+        array( 'field' => 'ctsm_facebook_type', 'value' => 'product' )
+    )),
 ))
 ;
