@@ -42,6 +42,12 @@ require CT_SOCIALMETA_PATH . 'includes/ct-socialmeta-functions.php';
 require CT_SOCIALMETA_PATH . 'includes/ct-socialmeta-core.php';
 
 /**
+ * Disable and clear all cached transient
+ * From database when plugin is disabled or deactivated.
+ */
+register_deactivation_hook( __FILE__, 'ctsm_purge_cache' );
+
+/**
  * Begins execution of the plugin.
  *
  * @since    1.0.0

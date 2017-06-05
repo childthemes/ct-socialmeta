@@ -260,16 +260,45 @@ function ctsm_get_user_name($user_id) {
 endif;
 
 /**
+ * Purge Cache on Plugin Disabled
+ *
+ * @since   1.0.0
+ * @return  void
+ */
+if ( ! function_exists( 'ctsm_purge_cache' ) ) :
+function ctsm_purge_cache() {
+
+    global $wpdb;
+
+    $sql = $wpdb->prepare("
+    SELECT option_name
+    FROM $wpdb->options
+    WHERE option_name LIKE '%s'
+    ", esc_sql( "_transient_timeout_ct_socialmeta_head%" ) );
+
+    $transients = $wpdb->get_col( $sql );
+
+    foreach( $transients as $transient ) {
+        $key = str_replace( '_transient_timeout_', '', $transient );
+        delete_transient( $key );
+    }
+
+    wp_cache_flush();
+}
+endif;
+
+/**
  * Plugin Debugger
  */
 function ctsm_admin_debugger() {
 
     global $ct_socialmeta;
 
-    $data = ctsm_get_attachment_id_from_src('http://dev.idjavahost.com/assets/media/2017/05/logo-big.png');
+    $opt  = 'ct_socialmeta_head_support_' . get_template();
+    $data = get_option( $opt );
 
     echo "<pre style='width:100%;overflow:auto'><code>";
-    print_r($data);
+    print_r($opt);
     echo "</code></pre>";
 }
 //add_action( 'admin_notices', 'ctsm_admin_debugger' );
@@ -285,9 +314,9 @@ function ctsm_front_debugger() {
     $object = ctsm_get_user_name(1);
 
     echo "<br /><br /><pre style='width:100%;overflow:auto'><code>";
-    var_dump( carbon_get_theme_option('ctsm_facebook_page_id') );
+    var_dump( get_option( 'ct_socialmeta_head_support_' . get_template() ) );
     echo "\n";
-    var_dump( $data );
+    //var_dump( $data );
     echo "</code></pre>";
 }
-add_action( 'wp_head', 'ctsm_front_debugger', 9999 );
+//add_action( 'wp_footer', 'ctsm_front_debugger', 9999 );

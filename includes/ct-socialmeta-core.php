@@ -35,6 +35,7 @@ class CT_Socialmeta {
 		$this->version = '1.0.0';
 
         add_action( 'plugins_loaded', array( $this, 'load_dependencies' ) );
+        add_action( 'load-settings_page_crbn-child-social-meta', array( $this, 'check_warning' ) );
 	}
 
 	/**
@@ -91,6 +92,44 @@ class CT_Socialmeta {
             require_once CT_SOCIALMETA_PATH . 'includes/carbon-fields/carbon-fields-plugin.php';
         }
 
+	}
+
+    /**
+	 * Check if current template support head attributes
+	 *
+	 * @since     1.0.0
+	 * @return    void
+	 */
+    public function check_warning() {
+
+        $template = get_template();
+        $option_template = get_option( 'ct_socialmeta_head_support_' . $template );
+
+        if ( ! $option_template ) {
+            add_action( 'admin_notices', array( $this, 'add_template_head_notice' ) );
+        }
+    }
+
+    /**
+	 * Add admin notice if current template doesn't support head attribute hook.
+	 *
+	 * @since     1.0.0
+	 * @return    void
+	 */
+	public function add_template_head_notice() {
+        $template_path = get_template_directory();
+        $file_path = str_replace( ABSPATH, '', $template_path );
+        ?>
+        <div id="ct-socialmeta-message" class="notice notice-warning ct-socialmeta-notice">
+            <p>
+                <strong><?php esc_html_e( 'WARNING!!!' ) ?></strong><br />
+                <?php printf(
+                __( 'For use Opeh Graph meta tags, your current active theme must supported custom HTML head attribute, please add it manually.<br />Replace your <code>&lt;head&gt;</code> with %s at file %s', 'ct-socialmeta' ),
+                "<code>&lt;head &lt;?php do_action( &#39;add_head_attributes&#39; ); ?&gt;&gt;</code>",
+                "<code>$file_path/header.php</code>"
+            ); ?></p>
+        </div>
+        <?php
 	}
 
 	/**

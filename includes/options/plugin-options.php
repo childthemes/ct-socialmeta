@@ -108,9 +108,9 @@ Container::make('theme_options', __('Child Social Meta', 'ct-socialmeta'))
     Field::make('select', 'ctsm_twitter_style', __('Twitter Card', 'ct-socialmeta'))
         ->help_text(__('specify the type of card for your content', 'ct-socialmeta'))
         ->set_options('ctsm_twitter_card_styles'),
-    Field::make('text', 'ctsm_twitter_username', __('Twitter Username', 'ct-socialmeta'))
+    Field::make('text', 'ctsm_twitter_username', __('Site Username', 'ct-socialmeta'))
         ->help_text(__('Twitter username without @', 'ct-socialmeta')),
-    Field::make('text', 'ctsm_twitter_creator', __('Twitter Creator', 'ct-socialmeta'))
+    Field::make('text', 'ctsm_twitter_creator', __('Card Creator', 'ct-socialmeta'))
         ->help_text(__('Twitter username without @, Used with Summary Card with Large Image'))
         ->set_conditional_logic(array(
             array(
@@ -129,7 +129,7 @@ Container::make('theme_options', __('Child Social Meta', 'ct-socialmeta'))
  * MOBILE APPS
  */
 ->add_tab( __('Application Properties', 'ct-socialmeta'), array(
-    Field::make('separator', 'ctsm_apps_desc', '<small style="font-size:13px;font-weight:400;">'. __('Applcation details is required for Twitter Card Apps and useful for Facebook mobile sharing and stories (Required facebook App ID and Page ID).', 'ct-socialmeta').'</small>'),
+    Field::make('separator', 'ctsm_apps_desc', '<small style="font-size:13px;font-weight:400;">'. __('Use this if site has application. Application details is required for Twitter Card Apps and useful for Facebook mobile sharing and stories (Required facebook App ID and Page ID).', 'ct-socialmeta').'</small>'),
 
     Field::make('separator', 'ctsm_app_iphone_sep', __('iPhone App', 'ct-socialmeta')),
     Field::make('text', 'ctsm_app_name_iphone', __('App Name', 'ct-socialmeta'))->set_width('33.333333'),

@@ -11,6 +11,11 @@
 class CT_Socialmeta_Generator {
 
     /**
+     * @var string
+     */
+    protected $template;
+
+    /**
      * @var WP_Post or WP_Term
      */
     protected $object;
@@ -31,12 +36,19 @@ class CT_Socialmeta_Generator {
     public $meta = array();
 
     /**
+     * @var $og_head
+     */
+    protected $og_head;
+
+    /**
      * Initialize the class and set its properties.
      *
      * @since    1.0.0
      */
     public function __construct() {
 
+        add_action( 'template_redirect', array( $this, 'get_socialmeta_tags' ) );
+        add_action( 'add_head_attributes', array( $this, 'socialmeta_head_attrs' ) );
         add_action( 'wp_head', array( $this, 'socialmeta_tags' ), 1 );
 
     }
@@ -58,19 +70,29 @@ class CT_Socialmeta_Generator {
      */
     public function get_socialmeta_tags() {
 
+        $this->template = get_template();
         $trans_id  = $this->get_cache_key();
         $transient = get_transient( $trans_id );
         $lifetime  =  carbon_get_theme_option('ctsm_cache_lifetime');
+
+        add_option( 'ct_socialmeta_head_support_' . $this->template, false );
 
         if ( $lifetime > 0 && $transient !== false ) {
             return $transient;
         }
 
-        $metadata = $this->get_socialmeta();
+        $metadata = '';
+        $socialmeta = $this->get_socialmeta();
+        foreach ($socialmeta as $name => $content) {
+            $nametag = ( strpos($name, 'twitter') !== false ) ? 'name' : 'property';
+            $metadata .= '<meta '. $nametag .'="'. esc_attr($name) .'" content="'. esc_attr($content) .'" />';
+        }
+
         if ($lifetime > 0) {
             $lifetime = $lifetime > 30 ? $lifetime : MINUTE_IN_SECONDS; // reasonable timeout
             set_transient( $trans_id, $metadata, $lifetime );
         }
+
         return $metadata;
     }
 
@@ -81,6 +103,10 @@ class CT_Socialmeta_Generator {
      * @return   string
      */
     public function get_socialmeta() {
+
+        if ( !empty( $this->meta ) && !empty( $this->og_head ) ) {
+            return $this->meta;
+        }
 
         global $wp,$post;
 
@@ -280,6 +306,16 @@ class CT_Socialmeta_Generator {
                             }
                         }
                     }
+                    // Override Twitter
+                    if ( $this->meta('twitter_is_default') !== 'yes' ) {
+                        $meta_tw_card = $this->meta('facebook_type');
+                        if ( !empty( $meta_tw_card ) ) {
+                            $tw_card = $meta_tw_card;
+                        }
+                        if ( $meta_tw_card == 'summary_large_image' && ( $meta_tw_creator = $this->meta('twitter_creator') ) ) {
+                            $meta['twitter:creator'] = '@'.esc_attr( $meta_tw_creator );
+                        }
+                    }
                 }
 
                 //Specific facebook
@@ -289,7 +325,7 @@ class CT_Socialmeta_Generator {
                              $this->get('facebook_article_author')
                             : ctsm_get_user_name( $_object->post_author );
                     }
-                    if ($article_publisher = $this->get('facebook_page_id') && !isset($meta['article:publisher'])) {
+                    if ( ($article_publisher = $this->get('facebook_page_id')) && !isset($meta['article:publisher'])) {
                         $meta['article:publisher'] = $article_publisher;
                     }
 
@@ -331,6 +367,7 @@ class CT_Socialmeta_Generator {
          * Facebook Specific Meta Tags
          */
         if (!empty($fb_type)) {
+            $this->og_head = $fb_type;
             $meta['og:type'] = $fb_type;
         }
         if ( in_array( $fb_type, array( 'place', 'business.business' ) ) ) {
@@ -384,18 +421,26 @@ class CT_Socialmeta_Generator {
             if ( empty( $app_name ) || empty( $app_id ) || empty( $app_url ) ) {
                 continue;
             }
-            if ( $app == 'win' && ( $app_win_type = $this->get('app_uses_win') ) ) {
-                $app_type = ( $app_win_type == 'desktop' ) ? 'windows' : ( $app_win_type == 'desktop_mobile' ? 'windows_phone' : 'windows_universal' );
-            } else {
-                $app_type = $app;
+            if ( ! empty( $fb_app_id ) ) {
+                if ( $app == 'win' && ( $app_win_type = $this->get('app_uses_win') ) ) {
+                    $app_type = ( $app_win_type == 'desktop' ) ? 'windows' : ( $app_win_type == 'desktop_mobile' ? 'windows_phone' : 'windows_universal' );
+                } else {
+                    $app_type = $app;
+                }
+                $app_meta_url  = 'al:'.$app_type.':url';
+                $app_meta_name = 'al:'.$app_type.':app_name';
+                $app_meta_id   = 'al:'.$app_type.':';
+                $app_meta_id  .= ($app == 'android') ? 'package' : ( $app == 'win' ? 'app_id' : 'app_store_id' );
+                $meta[ $app_meta_url ] = esc_url( $app_url );
+                $meta[ $app_meta_id ] = esc_attr( $app_id );
+                $meta[ $app_meta_name ] = esc_attr( $app_name );
             }
-            $app_meta_url  = 'al:'.$app_type.':url';
-            $app_meta_name = 'al:'.$app_type.':app_name';
-            $app_meta_id   = 'al:'.$app_type.':';
-            $app_meta_id  .= ($app == 'android') ? 'package' : ( $app == 'win' ? 'app_id' : 'app_store_id' );
-            $meta[ $app_meta_url ] = esc_url( $app_url );
-            $meta[ $app_meta_id ] = esc_attr( $app_id );
-            $meta[ $app_meta_name ] = esc_attr( $app_name );
+            if ( $tw_card == 'app' && ! in_array( $app, array( 'ios', 'win' ) ) ) {
+                $app_tw_name = ( $app == 'android' ) ? 'googleplay' : $app;
+                $meta[ 'twitter:app:name:'.$app_tw_name ] = esc_attr( $app_name );
+                $meta[ 'twitter:app:id:'.$app_tw_name ] = esc_attr( $app_id );
+                $meta[ 'twitter:app:url:'.$app_tw_name ] = esc_url( $app_url );
+            }
         }
 
         /**
@@ -407,11 +452,7 @@ class CT_Socialmeta_Generator {
          * Finalize
          */
         ksort($this->meta);
-        foreach ($this->meta as $name => $content) {
-            $nametag = ( strpos($name, 'twitter') !== false ) ? 'name' : 'property';
-            $metadata .= '<meta '. $nametag .'="'. esc_attr($name) .'" content="'. esc_attr($content) .'" />';
-        }
-        return $metadata;
+        return $this->meta;
     }
 
     /**
@@ -453,18 +494,49 @@ class CT_Socialmeta_Generator {
             $key .= '_user_' . $_object->ID;
         }
         elseif ( is_archive() ) {
-            $key .= '_archive_';
-            if ( is_year() && get_query_var('year') ) {
-                $key .= get_query_var('year');
+            $key .= '_archive';
+            if ( $year = get_query_var('year') ) {
+                $key .= "_$year";
             }
-            if ( is_month() && get_query_var('monthnum') ) {
-                $key .= get_query_var('monthnum');
+            if ( $month = get_query_var('monthnum') ) {
+                $key .= "_$month";
             }
-            if ( is_day() && get_query_var('day') ) {
-                $key .= get_query_var('day');
+            if ( $day = get_query_var('day') ) {
+                $key .= "_$day";
             }
         }
         return $key;
+    }
+
+    /**
+     * Generate custom head attribute for Open Graph
+     *
+     * @since    1.0.0
+     * @return   void
+     */
+    public function socialmeta_head_attrs() {
+
+        update_option( 'ct_socialmeta_head_support_' . get_template(), true );
+
+        if ( empty( $this->og_head ) ) {
+            return;
+        }
+
+        switch ( $this->og_head ) {
+            case 'business.business':
+                $tag = 'prefix="og: http://ogp.me/ns# fb: http://ogp.me/ns/fb# business: http://ogp.me/ns/business#"'; break;
+            case 'product':
+                $tag = 'prefix="og: http://ogp.me/ns# fb: http://ogp.me/ns/fb# product: http://ogp.me/ns/product#"'; break;
+            case 'place':
+                $tag = 'prefix="og: http://ogp.me/ns# fb: http://ogp.me/ns/fb# place: http://ogp.me/ns/place#"'; break;
+            case 'profile':
+                $tag = 'prefix="og: http://ogp.me/ns# fb: http://ogp.me/ns/fb# profile: http://ogp.me/ns/profile#"'; break;
+            case 'article':
+                $tag = 'prefix="og: http://ogp.me/ns# fb: http://ogp.me/ns/fb# article: http://ogp.me/ns/article#"'; break;
+            default:
+                $tag = '';
+        }
+        echo !empty($tag) ? ' '.$tag : '';
     }
 
     /**

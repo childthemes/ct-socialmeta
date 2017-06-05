@@ -13,6 +13,8 @@ use Carbon_Fields\Container;
 use Carbon_Fields\Field;
 
 $post_types = (array) carbon_get_theme_option('ctsm_metabox_post_type');
+$fb_type = carbon_get_theme_option('ctsm_facebook_type');
+$tw_type = carbon_get_theme_option('ctsm_twitter_style');
 
 Container::make('post_meta', __('Custom Social Meta', 'ct-socialmeta'))
 ->show_on_post_type( $post_types )
@@ -36,7 +38,8 @@ Container::make('post_meta', __('Custom Social Meta', 'ct-socialmeta'))
         ->set_default_value('yes'),
 
     Field::make('select', 'ctsm_facebook_type', __('Facebook Site Type', 'ct-socialmeta'))->set_options('ctsm_facebook_site_types')
-    ->set_conditional_logic(array( array( 'field' => 'ctsm_facebook_is_default' ) )),
+    ->set_conditional_logic(array( array( 'field' => 'ctsm_facebook_is_default' ) ))
+    ->set_default_value( $fb_type ),
 
     Field::make('text', 'ctsm_facebook_profile', __('Facebook Profile ID', 'ct-socialmeta'))
     ->help_text(sprintf(__('Find your ID at %s', 'ct-socialmeta'), '<a href="https://findmyfbid.com/" target="_blank">FindMyFbId</a>'))
@@ -150,5 +153,30 @@ Container::make('post_meta', __('Custom Social Meta', 'ct-socialmeta'))
         array( 'field' => 'ctsm_facebook_is_default' ),
         array( 'field' => 'ctsm_facebook_type', 'value' => 'product' )
     )),
+))
+/**
+ * TWITTER SETTINGS
+ */
+->add_tab( __('Twitter Settings', 'ct-socialmeta'), array(
+    Field::make('checkbox', 'ctsm_twitter_is_default', __('Use Default Twitter Social Meta Settings', 'ct-socialmeta'))
+        ->set_option_value('yes')
+        ->set_default_value('yes'),
+
+    Field::make('select', 'ctsm_twitter_style', __('Twitter Card', 'ct-socialmeta'))
+        ->help_text(__('specify the type of card for your content', 'ct-socialmeta'))
+        ->set_options('ctsm_twitter_card_styles')
+        ->set_default_value( $tw_type )
+        ->set_conditional_logic(array(
+            array( 'field' => 'ctsm_twitter_is_default' )
+        )),
+    Field::make('text', 'ctsm_twitter_creator', __('Card Creator', 'ct-socialmeta'))
+        ->help_text(__('Twitter username without @, Used with Summary Card with Large Image'))
+        ->set_conditional_logic(array(
+            array( 'field' => 'ctsm_twitter_is_default' ),
+            array(
+                'field'   => 'ctsm_twitter_style',
+                'value'   => 'summary_large_image'
+            )
+        ))
 ))
 ;
