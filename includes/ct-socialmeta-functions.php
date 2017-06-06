@@ -274,12 +274,15 @@ function ctsm_purge_cache() {
     SELECT option_name
     FROM $wpdb->options
     WHERE option_name LIKE '%s'
-    ", esc_sql( "_transient_timeout_ct_socialmeta_head%" ) );
+    ", esc_sql( "%_transient%ct_socialmeta_head%" ) );
 
     $transients = $wpdb->get_col( $sql );
 
     foreach( $transients as $transient ) {
-        $key = str_replace( '_transient_timeout_', '', $transient );
+        $key = str_replace( '_transient_', '', $transient );
+        if ( strpos( $key, 'timeout' ) !== false ) {
+            $key = str_replace( 'timeout_', '', $key );
+        }
         delete_transient( $key );
     }
 
@@ -311,12 +314,15 @@ function ctsm_front_debugger() {
     global $ct_socialmeta;
 
     $data = $ct_socialmeta->generator->meta;
-    $object = ctsm_get_user_name(1);
+    $obj = get_queried_object();
+    $tax  = get_taxonomy( $obj->taxonomy );
+    $tax_post_type = get_post_type_object( get_post_type() );
+    $label = 'All ' . $tax_post_type->labels->name . ' under ' . $tax->labels->singular_name . ' ' . $obj->name;
 
     echo "<br /><br /><pre style='width:100%;overflow:auto'><code>";
-    var_dump( get_option( 'ct_socialmeta_head_support_' . get_template() ) );
+    var_dump( get_term_link( $obj, $obj->taxonomy ) );
     echo "\n";
-    //var_dump( $data );
+    var_dump( $data );
     echo "</code></pre>";
 }
-//add_action( 'wp_footer', 'ctsm_front_debugger', 9999 );
+add_action( 'wp_head', 'ctsm_front_debugger', 9999 );

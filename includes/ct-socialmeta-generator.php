@@ -75,7 +75,7 @@ class CT_Socialmeta_Generator {
         $transient = get_transient( $trans_id );
         $lifetime  =  carbon_get_theme_option('ctsm_cache_lifetime');
 
-        add_option( 'ct_socialmeta_head_support_' . $this->template, false );
+        set_transient( 'ct_socialmeta_head_support_' . $this->template, false, false );
 
         if ( $lifetime > 0 && $transient !== false ) {
             return $transient;
@@ -209,6 +209,7 @@ class CT_Socialmeta_Generator {
          * Get custom value by object type.
          */
         if ( $_object && ! is_author() && ! is_front_page() && ! is_home() ) {
+            /* @var $_object WP_Post */
             if ( $_object instanceof WP_Post ) {
                 $fb_type = 'article';
                 $tw_card = 'summary';
@@ -344,6 +345,25 @@ class CT_Socialmeta_Generator {
                         $meta['article:author'] = $user_fb_id;
                     }
                 }
+            }
+            /* @var $_object WP_Term */
+            elseif ( $_object instanceof WP_Term ) {
+                $fb_type = 'article';
+                $tw_card = 'summary';
+
+                $meta['og:url'] = get_term_link( $_object, $_object->taxonomy );
+                $meta['og:title'] = $_object->name . $add_title;
+                $term_desc = term_description( $_object->id, $_object->taxonomy );
+                if ( empty( $term_desc ) ) {
+                    $tax_obj = get_taxonomy( $_object->taxonomy );
+                    $tax_post_type = get_post_type_object( get_post_type() );
+                    $term_desc = sprintf(
+                        esc_attr__( 'All %s under %s', 'ct-socialmeta' ),
+                        $tax_post_type->labels->name,
+                        $tax_obj->labels->singular_name.' '.$_object->name
+                    );
+                }
+                $meta['og:description'] = wp_strip_all_tags( $term_desc );
             }
         }
 
@@ -516,7 +536,7 @@ class CT_Socialmeta_Generator {
      */
     public function socialmeta_head_attrs() {
 
-        update_option( 'ct_socialmeta_head_support_' . get_template(), true );
+        set_transient( 'ct_socialmeta_head_support_' . get_template(), true, false );
 
         if ( empty( $this->og_head ) ) {
             return;
