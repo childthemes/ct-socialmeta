@@ -51,6 +51,11 @@ class CT_Socialmeta_Fields {
         include_once( $this->path . 'post-fields.php' );
 
         /**
+         * Include individual term meta settings
+         */
+        include_once( $this->path . 'term-fields.php' );
+
+        /**
          * Include user profile social media
          */
         include_once( $this->path . 'user-fields.php' );

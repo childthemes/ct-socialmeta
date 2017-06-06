@@ -225,12 +225,30 @@ endif;
  *
  * @param $post_id  int
  */
-if ( ! function_exists('ctsm_after_save_meta') ) :
-function ctsm_after_save_meta($post_id) {
-    $cache_key = 'ct_socialmeta_head_' . get_post_type($post_id) . '_' . $post_id;
-    delete_transient( $cache_key );
+if ( ! function_exists('ctsm_after_save_post_meta') ) :
+function ctsm_after_save_post_meta($post_id) {
+    if ( $post_type = get_post_type($post_id) ) {
+        $cache_key = 'ct_socialmeta_head_' . $post_type . '_' . $post_id;
+        delete_transient( $cache_key );
+    }
 }
-add_action( 'carbon_after_save_post_meta', 'ctsm_after_save_meta' );
+add_action( 'carbon_after_save_post_meta', 'ctsm_after_save_post_meta' );
+endif;
+
+/**
+ * Hook after term meta saved.
+ *
+ * @param $post_id  int
+ */
+if ( ! function_exists('ctsm_after_save_term_meta') ) :
+function ctsm_after_save_term_meta($term_id) {
+    $term = get_term($term_id);
+    if ( $term instanceof WP_Term ) {
+        $cache_key = 'ct_socialmeta_head_' . $term->taxonomy . '_' . $term_id;
+        delete_transient( $cache_key );
+    }
+}
+add_action( 'carbon_after_save_term_meta', 'ctsm_after_save_term_meta' );
 endif;
 
 /**
@@ -289,40 +307,3 @@ function ctsm_purge_cache() {
     wp_cache_flush();
 }
 endif;
-
-/**
- * Plugin Debugger
- */
-function ctsm_admin_debugger() {
-
-    global $ct_socialmeta;
-
-    $opt  = 'ct_socialmeta_head_support_' . get_template();
-    $data = get_option( $opt );
-
-    echo "<pre style='width:100%;overflow:auto'><code>";
-    print_r($opt);
-    echo "</code></pre>";
-}
-//add_action( 'admin_notices', 'ctsm_admin_debugger' );
-
-/**
- * Plugin Debugger
- */
-function ctsm_front_debugger() {
-
-    global $ct_socialmeta;
-
-    $data = $ct_socialmeta->generator->meta;
-    $obj = get_queried_object();
-    $tax  = get_taxonomy( $obj->taxonomy );
-    $tax_post_type = get_post_type_object( get_post_type() );
-    $label = 'All ' . $tax_post_type->labels->name . ' under ' . $tax->labels->singular_name . ' ' . $obj->name;
-
-    echo "<br /><br /><pre style='width:100%;overflow:auto'><code>";
-    var_dump( get_term_link( $obj, $obj->taxonomy ) );
-    echo "\n";
-    var_dump( $data );
-    echo "</code></pre>";
-}
-add_action( 'wp_head', 'ctsm_front_debugger', 9999 );

@@ -23,7 +23,7 @@ Container::make('post_meta', __('Custom Social Meta', 'ct-socialmeta'))
  * GENERAL SETTINGS
  */
 ->add_tab( __('General', 'ct-socialmeta'), array(
-    Field::make('text', 'ctsm_defaut_title', __('Social Meta Title', 'ct-socialmeta'))->set_width(70)
+    Field::make('text', 'ctsm_default_title', __('Social Meta Title', 'ct-socialmeta'))->set_width(70)
         ->help_text('<small>'.__('Leave empty to use default title', 'ct-socialmeta').'</small>'),
     Field::make('image', 'ctsm_default_image', __('Social Meta Image', 'ct-socialmeta'))->set_width(30),
     Field::make('textarea', 'ctsm_default_desc', __('Social Meta Description', 'ct-socialmeta'))->set_rows(2)

@@ -78,11 +78,15 @@ class CT_Socialmeta_Generator {
         set_transient( 'ct_socialmeta_head_support_' . $this->template, false, false );
 
         if ( $lifetime > 0 && $transient !== false ) {
-            return $transient;
+            $socialmeta = $transient;
+        } else {
+            $socialmeta = $this->get_socialmeta();
         }
 
+        $this->meta    = $socialmeta;
+        $this->og_head = isset($socialmeta['og:type']) ? $socialmeta['og:type'] : 'website';
+
         $metadata = '';
-        $socialmeta = $this->get_socialmeta();
         foreach ($socialmeta as $name => $content) {
             $nametag = ( strpos($name, 'twitter') !== false ) ? 'name' : 'property';
             $metadata .= '<meta '. $nametag .'="'. esc_attr($name) .'" content="'. esc_attr($content) .'" />';
@@ -90,7 +94,7 @@ class CT_Socialmeta_Generator {
 
         if ($lifetime > 0) {
             $lifetime = $lifetime > 30 ? $lifetime : MINUTE_IN_SECONDS; // reasonable timeout
-            set_transient( $trans_id, $metadata, $lifetime );
+            set_transient( $trans_id, $socialmeta, $lifetime );
         }
 
         return $metadata;
@@ -104,7 +108,7 @@ class CT_Socialmeta_Generator {
      */
     public function get_socialmeta() {
 
-        if ( !empty( $this->meta ) && !empty( $this->og_head ) ) {
+        if ( ! empty( $this->meta ) ) {
             return $this->meta;
         }
 
@@ -112,7 +116,7 @@ class CT_Socialmeta_Generator {
 
         $metadata  = '';
         $_object   = $this->get_object();
-        $def_title = $this->get('defaut_title') ? $this->get('defaut_title') : get_bloginfo('name');
+        $def_title = $this->get('default_title') ? $this->get('default_title') : get_bloginfo('name');
         $def_desc  = $this->get('default_desc') ? $this->get('default_desc') : get_bloginfo('description');
         $imgId     = $this->get('default_image') ? $this->get('default_image') : false;
         $sep_title = ($opt_sep_title = $this->get('social_title_sep')) ? ' ' . html_entity_decode($opt_sep_title) . ' ' : ' ';
@@ -258,7 +262,7 @@ class CT_Socialmeta_Generator {
 
                 // Custom override is enabled
                 if ( $this->is_post_type_active( $_object->post_type ) ) {
-                    if ( $meta_title = $this->meta('defaut_title') ) {
+                    if ( $meta_title = $this->meta('default_title') ) {
                         $meta['og:title'] = $meta_title;
                     }
                     if ( $meta_desc = $this->meta('default_desc') ) {
@@ -351,9 +355,16 @@ class CT_Socialmeta_Generator {
                 $fb_type = 'article';
                 $tw_card = 'summary';
 
+                $defined_term_title = $this->termeta('default_title');
+                $defined_term_desc  = $this->termeta('default_desc');
+
+                if ( $defined_term_img = $this->termeta('default_image') ) {
+                    $imgId = absint($defined_term_img);
+                }
+
                 $meta['og:url'] = get_term_link( $_object, $_object->taxonomy );
-                $meta['og:title'] = $_object->name . $add_title;
-                $term_desc = term_description( $_object->id, $_object->taxonomy );
+                $meta['og:title'] = !empty($defined_term_title) ? $defined_term_title : $_object->name . $add_title;
+                $term_desc = !empty($defined_term_desc) ? $defined_term_desc : term_description( $_object->term_id, $_object->taxonomy );
                 if ( empty( $term_desc ) ) {
                     $tax_obj = get_taxonomy( $_object->taxonomy );
                     $tax_post_type = get_post_type_object( get_post_type() );
@@ -387,7 +398,6 @@ class CT_Socialmeta_Generator {
          * Facebook Specific Meta Tags
          */
         if (!empty($fb_type)) {
-            $this->og_head = $fb_type;
             $meta['og:type'] = $fb_type;
         }
         if ( in_array( $fb_type, array( 'place', 'business.business' ) ) ) {
@@ -427,7 +437,7 @@ class CT_Socialmeta_Generator {
         }
 
         if ( ! empty( $meta['og:description'] ) ) {
-            $meta['twitter:description'] = $meta['og:description'];
+            $meta['twitter:description'] = (strlen($meta['og:description']) > 200) ? substr($meta['og:description'], 0, 200) : $meta['og:description'];
         }
 
         /**
@@ -466,13 +476,13 @@ class CT_Socialmeta_Generator {
         /**
          * Hook for theme or plugin
          */
-        $this->meta = apply_filters( 'ct_socialmeta_tags', $meta );
+        $meta = apply_filters( 'ct_socialmeta_tags', $meta );
 
         /**
          * Finalize
          */
-        ksort($this->meta);
-        return $this->meta;
+        ksort($meta);
+        return $meta;
     }
 
     /**
@@ -614,4 +624,19 @@ class CT_Socialmeta_Generator {
         return carbon_get_post_meta( $this->object->ID, $field, $type );
     }
 
+    /**
+     * Just shorthand to get term meta value
+     *
+     * @since    1.0.0
+     * @param    $field   field name
+     * @param    $type    field type
+     * @return   mixed | string | int
+     */
+    public function termeta( $field, $type = null ) {
+        if (!$this->object) {
+            return;
+        }
+        $field = (strpos($field, 'ctsm_') !== false) ? $field : 'ctsm_'.$field;
+        return carbon_get_term_meta( $this->object->term_id, $field, $type );
+    }
 }

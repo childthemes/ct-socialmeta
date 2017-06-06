@@ -26,7 +26,7 @@ Container::make('theme_options', __('Child Social Meta', 'ct-socialmeta'))
  */
 ->add_tab( __('General', 'ct-socialmeta'), array(
     Field::make('separator', 'ctsm_social_values', __('Default Social Meta', 'ct-socialmeta')),
-    Field::make('text', 'ctsm_defaut_title', __('Default Title', 'ct-socialmeta'))->set_required(true)->set_default_value(get_bloginfo('name')),
+    Field::make('text', 'ctsm_default_title', __('Default Title', 'ct-socialmeta'))->set_required(true)->set_default_value(get_bloginfo('name')),
     Field::make('textarea', 'ctsm_default_desc', __('Default Description', 'ct-socialmeta'))->set_required(true)->set_rows(5)->set_default_value(get_bloginfo('description'))->set_width(75)
     ->help_text(__('maximum 200 characters', 'ct-socialmeta')),
     Field::make('image', 'ctsm_default_image', __('Default Image', 'ct-socialmeta'))->set_required(true)->set_width(25),
